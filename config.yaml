@@ -1,0 +1,16 @@
+controlplane:
+  memory: 2048
+workers:
+  count: 2
+  memory: 4096
+versions:
+  imagebox: debian/bookworm64
+  kubernetes: "1.30"
+  calico: 3.27.0
+  ingress: 1.2.2
+  helm: 3.15.2
+registry:
+  enabled: true
+  ip: 192.168.56.200
+storage:
+  ip: 192.168.56.201
