@@ -1,21 +1,18 @@
 #!/bin/bash
 
-apt-get update -qq && apt-get install -y \
-  libbtrfs-dev \
-  containers-common \
-  git \
-  libassuan-dev \
-  libglib2.0-dev \
-  libc6-dev \
-  libgpgme-dev \
-  libgpg-error-dev \
-  libseccomp-dev \
-  libsystemd-dev \
-  libselinux1-dev \
-  pkg-config \
-  go-md2man \
-  cri-o-runc \
-  libudev-dev \
-  software-properties-common \
-  gcc \
-  make
+## Install CRIO Runtime
+
+sudo apt-get update -y
+apt-get install -y software-properties-common curl apt-transport-https ca-certificates
+
+curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/prerelease:/main/deb/Release.key |
+    gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/prerelease:/main/deb/ /" |
+    tee /etc/apt/sources.list.d/cri-o.list
+
+sudo apt-get update -y
+sudo apt-get install -y cri-o
+
+sudo systemctl daemon-reload
+sudo systemctl enable crio --now
+sudo systemctl start crio.service

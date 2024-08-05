@@ -1,16 +1,26 @@
 controlplane:
   memory: 2048
+network: 
+  ip_range: 10.0.0
+  pod_cird: 10.85.0.0/16
+  service_cird: 172.16.1.0/16
 workers:
   count: 2
   memory: 4096
 versions:
+  # imagebox: bento/ubuntu-22.04
   imagebox: debian/bookworm64
   kubernetes: "1.30"
-  calico: 3.27.0
-  ingress: 1.2.2
+  calico: 3.28.0
+  ingress: 1.3.1
   helm: 3.15.2
 registry:
-  enabled: true
-  ip: 192.168.56.200
+  enabled: false
+  ip: 200
+  subdomain: registry
 storage:
-  ip: 192.168.56.201
+  enabled: false
+  ip: 201
+host: kube.lab
+cni: calico
+loadbalancer: metallb
