@@ -21,9 +21,9 @@ metadata:
 spec:
   local:
     v4pools:
-    - subnet: ${IP_BASE}.0/24
-      pool: ${IP_BASE}.11/32
-      aggregation: default
+    - subnet: 172.30.200.0/24
+      pool: 172.30.200.155-172.30.200.160
+      aggregation: /32
 " | kubectl create -f -
 fi
 
@@ -60,15 +60,50 @@ DOMAIN=$(yq -j .host /vagrant/config.yaml)
 REGISTRY_DOMAIN=$(yq -j .registry.subdomain /vagrant/config.yaml).${DOMAIN}
 
 # Install NGINX Ingress Controller
+# helm upgrade --install ingress-nginx ingress-nginx \
+#   --repo https://kubernetes.github.io/ingress-nginx \
+#   --namespace ingress --create-namespace
+# ????
+# kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
 
-# helm pull oci://ghcr.io/nginxinc/charts/nginx-ingress --untar --version ${INGRESS_VERSION}
-# cd nginx-ingress
-# kubectl apply -f crds
-# cd -
-# helm install nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version ${INGRESS_VERSION} --set controller.service.externalTrafficPolicy=Cluster --create-namespace --namespace=ingress
-# rm -fr nginx-ingress
+helm pull oci://ghcr.io/nginxinc/charts/nginx-ingress --untar --version ${INGRESS_VERSION}
+cd nginx-ingress
+kubectl apply -f crds/
+cd ..
+helm install nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version ${INGRESS_VERSION} --set controller.service.externalTrafficPolicy=Cluster
+# --create-namespace --namespace=ingress
+#rm -fr nginx-ingress
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.1/deploy/static/provider/baremetal/deploy.yaml
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.1/deploy/static/provider/baremetal/deploy.yaml
+# INGRESS_CONTROLLER_POD=$(kubectl get pods -n ingress-nginx | grep controller | awk '{print $1}')
+# kubectl wait --for=jsonpath='{.status.phase}'=Running pod/$INGRESS_CONTROLLER_POD -n ingress-nginx --timeout=400s
+# 
+# echo "
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: ingress-nginx-controller-lb
+#   namespace: ingress-nginx
+# spec:
+#   externalTrafficPolicy: Cluster
+#   internalTrafficPolicy: Cluster
+#   ports:
+#   - appProtocol: http
+#     name: http
+#     port: 80
+#     protocol: TCP
+#     targetPort: http
+#   - appProtocol: https
+#     name: https
+#     port: 443
+#     protocol: TCP
+#     targetPort: https
+#   selector:
+#     app.kubernetes.io/component: controller
+#     app.kubernetes.io/instance: ingress-nginx
+#     app.kubernetes.io/name: ingress-nginx
+#   sessionAffinity: None
+#   type: LoadBalancer" | kubectl create -f -
 
 # install csi-driver-nfs to use pvs
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
@@ -95,16 +130,13 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${REGISTRY_CERTS}/tl
 REGISTRY_TLS_SECRET=registry-tls
 kubectl create namespace ${REGISTRY_NAMESPACE}
 kubectl create secret -n ${REGISTRY_NAMESPACE} tls $REGISTRY_TLS_SECRET --cert=${REGISTRY_CERTS}/tls.crt --key=${REGISTRY_CERTS}/tls.key
+sudo cp ${REGISTRY_CERTS}/tls.crt /vagrant/ca.crt
+sudo cp ${REGISTRY_CERTS}/tls.crt /usr/local/share/ca-certificates/ca.crt
+sudo update-ca-certificates
 # kubectl create secret -n ${REGISTRY_NAMESPACE} generic auth-secret --from-file=${REGISTRY_AUTH}/htpasswd
 # cd
 # kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.1/cert-manager.yaml
 
-echo "
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: $REGISTRY_NAMESPACE
-" | kubectl create -f -
 echo "
 apiVersion: apps/v1
 kind: Deployment
@@ -189,30 +221,30 @@ spec:
 " | kubectl create -f -
 
 # argocd https://artifacthub.io/packages/helm/argo/argo-cd
-helm repo add argo https://argoproj.github.io/argo-helm
-echo "
-global:
-  domain: ${DOMAIN}
-
-configs:
-  params:
-    server.insecure: true
-
-server:
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    path: /argocd
-    pathType: Prefix" > ~/argocd.values.yaml
-helm install argo-cd argo/argo-cd --version 7.3.6 --values ~/argocd.values.yaml --create-namespace --namespace=argocd
-# kubectl create ns argocd
-# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-sleep 30s
-
-ARGOCD_POD=$(kubectl get pods -n argocd | grep "argocd-server" | awk '{print $1}')
-kubectl wait --for=condition=Ready pod/$ARGOCD_POD -n argocd --timeout=600s
-
-echo "ArgoCD"
-echo "login : admin"
-echo "password : $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
+# helm repo add argo https://argoproj.github.io/argo-helm
+# echo "
+# global:
+#   domain: ${DOMAIN}
+# 
+# configs:
+#   params:
+#     server.insecure: true
+# 
+# server:
+#   ingress:
+#     enabled: true
+#     ingressClassName: nginx
+#     path: /argocd
+#     pathType: Prefix" > ~/argocd.values.yaml
+# helm install argo-cd argo/argo-cd --version 7.3.6 --values ~/argocd.values.yaml --create-namespace --namespace=argocd
+# # kubectl create ns argocd
+# # kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# 
+# sleep 30s
+# 
+# ARGOCD_POD=$(kubectl get pods -n argocd | grep "argocd-server" | awk '{print $1}')
+# kubectl wait --for=condition=Ready pod/$ARGOCD_POD -n argocd --timeout=600s
+# 
+# echo "ArgoCD"
+# echo "login : admin"
+# echo "password : $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"

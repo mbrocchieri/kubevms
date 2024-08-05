@@ -42,10 +42,10 @@ Vagrant.configure("2") do |config|
     end
 
     (1..configs["workers"]["count"]).each do |i|
-        config.vm.define "node-#{i}" do |node|
+        config.vm.define "node#{i}" do |node|
             node.vm.box = configs["versions"]["imagebox"]
             node.vm.network "private_network", ip: "#{ip_base}.#{i + 10}"
-            node.vm.hostname = "node-#{i}"
+            node.vm.hostname = "node#{i}"
             node.vm.provider "virtualbox" do |virtualbox|
                 virtualbox.memory = configs["controlplane"]["memory"]
             end
