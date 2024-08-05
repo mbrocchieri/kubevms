@@ -197,9 +197,7 @@ metadata:
   name: docker-registry
   namespace: $REGISTRY_NAMESPACE
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: \"0\"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: \"600\"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: \"600\"
+    nginx.org/client-max-body-size: \"0\"
     kubernetes.io/tls-acme: 'true'
 spec:
   ingressClassName: nginx
