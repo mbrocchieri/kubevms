@@ -1,0 +1,9 @@
+apiVersion: crd.projectcalico.org/v1
+kind: IPPool
+metadata:
+  name: purelb-ipv4
+  namespace: kube-system
+spec:
+  cidr: 172.30.200.0/24
+  disabled: true
+

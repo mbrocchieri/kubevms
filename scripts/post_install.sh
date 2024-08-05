@@ -71,6 +71,7 @@ cd nginx-ingress
 kubectl apply -f crds/
 cd ..
 helm install nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version ${INGRESS_VERSION} --set controller.service.externalTrafficPolicy=Cluster
+sleep 2m
 # --create-namespace --namespace=ingress
 #rm -fr nginx-ingress
 
@@ -197,18 +198,16 @@ metadata:
   name: docker-registry
   namespace: $REGISTRY_NAMESPACE
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: \"0\"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: \"600\"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: \"600\"
+    nginx.org/client-max-body-size: \"0\"
     kubernetes.io/tls-acme: 'true'
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - registry.kube.lab
+    - registry.$DOMAIN
     secretName: $REGISTRY_TLS_SECRET
   rules:
-  - host: registry.kube.lab
+  - host: registry.$DOMAIN
     http:
       paths:
       - path: /
@@ -221,30 +220,29 @@ spec:
 " | kubectl create -f -
 
 # argocd https://artifacthub.io/packages/helm/argo/argo-cd
-# helm repo add argo https://argoproj.github.io/argo-helm
-# echo "
-# global:
-#   domain: ${DOMAIN}
-# 
-# configs:
-#   params:
-#     server.insecure: true
-# 
-# server:
-#   ingress:
-#     enabled: true
-#     ingressClassName: nginx
-#     path: /argocd
-#     pathType: Prefix" > ~/argocd.values.yaml
-# helm install argo-cd argo/argo-cd --version 7.3.6 --values ~/argocd.values.yaml --create-namespace --namespace=argocd
-# # kubectl create ns argocd
-# # kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-# 
-# sleep 30s
-# 
-# ARGOCD_POD=$(kubectl get pods -n argocd | grep "argocd-server" | awk '{print $1}')
-# kubectl wait --for=condition=Ready pod/$ARGOCD_POD -n argocd --timeout=600s
-# 
-# echo "ArgoCD"
-# echo "login : admin"
-# echo "password : $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
+ARGOCD_VERSION=$(yq -j .versions.argocd /vagrant/config.yaml)
+helm repo add argo https://argoproj.github.io/argo-helm
+echo "
+global:
+  domain: argocd.$DOMAIN
+
+configs:
+  params:
+    server.insecure: true
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx" > ~/argocd.values.yaml
+helm install argo-cd argo/argo-cd --version $ARGOCD_VERSION --values ~/argocd.values.yaml --create-namespace --namespace=argocd
+# kubectl create ns argocd
+# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+sleep 30s
+
+ARGOCD_POD=$(kubectl get pods -n argocd | grep "argocd-server" | awk '{print $1}')
+kubectl wait --for=condition=Ready pod/$ARGOCD_POD -n argocd --timeout=600s
+
+echo "ArgoCD"
+echo "login : admin"
+echo "password : $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
