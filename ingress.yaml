@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docker-registry
+  namespace: registry
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: \"0\"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: \"600\"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: \"600\"
+    kubernetes.io/tls-acme: 'true'
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - registry.kube.lab
+    secretName: registry-tls
+  rules:
+  - host: registry.kube.lab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: docker-registry
+            port:
+              number: 5000

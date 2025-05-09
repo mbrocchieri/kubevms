@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingres-nginx
+  namespace: ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kube.lab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ingressnginx
+            port:
+              number: 80

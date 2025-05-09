@@ -2,4 +2,4 @@
 
 set -e
 
-nohup docker run -d -p 5000:5000 --name registry registry:2.7 &
+docker run -d -p 5000:5000 --restart always --name registry registry:2
